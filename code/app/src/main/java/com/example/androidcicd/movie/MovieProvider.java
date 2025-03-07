@@ -57,6 +57,7 @@ public class MovieProvider {
         return movies;
     }
 
+
     public void addMovie(Movie movie, OnMovieAddListener listener) {
         isMovieTitleExists(movie.getTitle(), exists -> {
             if (exists) {
@@ -100,6 +101,7 @@ public class MovieProvider {
         docRef.delete();
     }
 
+
     public void isMovieTitleExists(String title, OnTitleCheckListener listener) {
         movieCollection.whereEqualTo("title", title).get().addOnCompleteListener(task -> {
             if (task.isSuccessful() && task.getResult() != null && !task.getResult().isEmpty()) {
@@ -113,6 +115,7 @@ public class MovieProvider {
     public boolean validMovie(Movie movie, DocumentReference docRef) {
         return movie.getId().equals(docRef.getId()) && !movie.getTitle().isEmpty() && !movie.getGenre().isEmpty() && movie.getYear() > 0;
     }
+
 
     public interface OnTitleCheckListener {
         void onCheck(boolean exists);

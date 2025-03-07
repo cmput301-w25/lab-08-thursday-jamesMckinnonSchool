@@ -1,5 +1,6 @@
 package com.example.androidcicd;
 
+
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.*;
 
@@ -24,6 +25,7 @@ public class MovieProviderTest {
     private FirebaseFirestore mockFirestore;
 
     @Mock
+
     private CollectionReference mockCollection;
 
     @Mock
@@ -42,6 +44,7 @@ public class MovieProviderTest {
 
     @Before
     public void setUp() {
+
         // Mock Firestore and its dependencies
         when(mockFirestore.collection(any(String.class))).thenReturn(mockCollection);
         when(mockCollection.document(any(String.class))).thenReturn(mockDocument);
