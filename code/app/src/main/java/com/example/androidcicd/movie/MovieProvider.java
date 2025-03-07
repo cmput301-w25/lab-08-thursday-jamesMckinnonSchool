@@ -12,7 +12,7 @@ public class MovieProvider {
     private final ArrayList<Movie> movies;
     private final CollectionReference movieCollection;
 
-    private MovieProvider(FirebaseFirestore firestore) {
+    public MovieProvider(FirebaseFirestore firestore) {
         movies = new ArrayList<>();
         movieCollection = firestore.collection("movies");
     }
@@ -24,6 +24,11 @@ public class MovieProvider {
     public interface DataStatus {
         void onDataUpdated();
         void onError(String error);
+    }
+
+    public interface OnMovieAddListener {
+        void onMovieAddError(String errorMessage);
+        void onMovieAddedSuccessfully();
     }
 
     public void listenForUpdates(final DataStatus dataStatus) {
@@ -52,36 +57,41 @@ public class MovieProvider {
         return movies;
     }
 
-    public void addMovie(Movie movie) {
+
+    public void addMovie(Movie movie, OnMovieAddListener listener) {
         isMovieTitleExists(movie.getTitle(), exists -> {
             if (exists) {
-                throw new IllegalArgumentException("A movie with this title already exists!");
+                listener.onMovieAddError("A movie with this title already exists!");
+                return;
+            }
+
+            DocumentReference docRef = movieCollection.document();
+            movie.setId(docRef.getId());
+            if (validMovie(movie, docRef)) {
+                docRef.set(movie);
+                listener.onMovieAddedSuccessfully();
             } else {
-                DocumentReference docRef = movieCollection.document();
-                movie.setId(docRef.getId());
-                if (validMovie(movie, docRef)) {
-                    docRef.set(movie);
-                } else {
-                    throw new IllegalArgumentException("Invalid Movie!");
-                }
+                listener.onMovieAddError("Invalid Movie!");
             }
         });
     }
 
-    public void updateMovie(Movie movie, String title, String genre, int year) {
+    public void updateMovie(Movie movie, String title, String genre, int year, OnMovieAddListener listener) {
         isMovieTitleExists(title, exists -> {
             if (exists && !movie.getTitle().equals(title)) {
-                throw new IllegalArgumentException("A movie with this title already exists!");
+                listener.onMovieAddError("A movie with this title already exists!");
+                return;
+            }
+
+            movie.setTitle(title);
+            movie.setGenre(genre);
+            movie.setYear(year);
+            DocumentReference docRef = movieCollection.document(movie.getId());
+            if (validMovie(movie, docRef)) {
+                docRef.set(movie);
+                listener.onMovieAddedSuccessfully();
             } else {
-                movie.setTitle(title);
-                movie.setGenre(genre);
-                movie.setYear(year);
-                DocumentReference docRef = movieCollection.document(movie.getId());
-                if (validMovie(movie, docRef)) {
-                    docRef.set(movie);
-                } else {
-                    throw new IllegalArgumentException("Invalid Movie!");
-                }
+                listener.onMovieAddError("Invalid Movie!");
             }
         });
     }
@@ -91,7 +101,8 @@ public class MovieProvider {
         docRef.delete();
     }
 
-    private void isMovieTitleExists(String title, OnTitleCheckListener listener) {
+
+    public void isMovieTitleExists(String title, OnTitleCheckListener listener) {
         movieCollection.whereEqualTo("title", title).get().addOnCompleteListener(task -> {
             if (task.isSuccessful() && task.getResult() != null && !task.getResult().isEmpty()) {
                 listener.onCheck(true);
@@ -105,7 +116,8 @@ public class MovieProvider {
         return movie.getId().equals(docRef.getId()) && !movie.getTitle().isEmpty() && !movie.getGenre().isEmpty() && movie.getYear() > 0;
     }
 
-    private interface OnTitleCheckListener {
+
+    public interface OnTitleCheckListener {
         void onCheck(boolean exists);
     }
 }

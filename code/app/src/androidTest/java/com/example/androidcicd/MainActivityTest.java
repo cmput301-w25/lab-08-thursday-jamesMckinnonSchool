@@ -126,6 +126,22 @@ public class MainActivityTest {
         view.check(doesNotExist());
     }
 
+    @Test
+    public void addMovieShouldShowErrorForDuplicateMovie() throws InterruptedException {
+        onView(withId(R.id.buttonAddMovie)).perform(click());
+
+        onView(withId(R.id.edit_title)).perform(ViewActions.typeText("Oppenheimer"));
+        onView(withId(R.id.edit_genre)).perform(ViewActions.typeText("Thriller/Historical Drama"));
+        onView(withId(R.id.edit_year)).perform(ViewActions.typeText("2023"));
+
+        onView(withId(android.R.id.button1)).perform(click());
+
+        Thread.sleep(1000);
+
+        onView(withText("A movie with this title already exists!"))
+                .check(matches(isDisplayed()));
+    }
+
     @After
     public void tearDown() {
         String projectId = "lab-8-project-a1ca0";

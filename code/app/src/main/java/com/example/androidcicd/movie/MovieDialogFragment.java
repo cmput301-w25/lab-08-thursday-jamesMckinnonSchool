@@ -35,6 +35,14 @@ public class MovieDialogFragment extends DialogFragment {
         return fragment;
     }
 
+    private void showErrorDialog(String message) {
+        new AlertDialog.Builder(getContext())
+                .setTitle("Error")
+                .setMessage(message)
+                .setPositiveButton("OK", (dialog, which) -> dialog.dismiss())
+                .show();
+    }
+
     @NonNull
     @Override
     public Dialog onCreateDialog(@Nullable Bundle savedInstanceState) {
@@ -96,23 +104,46 @@ public class MovieDialogFragment extends DialogFragment {
                 .setPositiveButton("Continue", null)
                 .create();
 
-        // Change dialog so it does not automatically dismiss, but only when valid data is entered
         dialog.setOnShowListener(d -> {
             Button positiveButton = dialog.getButton(AlertDialog.BUTTON_POSITIVE);
             positiveButton.setOnClickListener(v -> {
                 if (!validInput())
-                    return;
+                    return; // Stop if input is invalid
+
                 String title = editMovieName.getText().toString().trim();
                 String genre = editMovieGenre.getText().toString().trim();
                 int year = Integer.parseInt(editMovieYear.getText().toString().trim());
-                if (tag != null && tag.equals( "Movie Details")) {
-                    movieProvider.updateMovie(movie, title, genre, year);
+
+                if (tag != null && tag.equals("Movie Details")) {
+                    // Updating a movie
+                    movieProvider.updateMovie(movie, title, genre, year, new MovieProvider.OnMovieAddListener() {
+                        @Override
+                        public void onMovieAddError(String errorMessage) {
+                            showErrorDialog(errorMessage);
+                        }
+
+                        @Override
+                        public void onMovieAddedSuccessfully() {
+                            dialog.dismiss();
+                        }
+                    });
                 } else {
-                    movieProvider.addMovie(new Movie(title, genre, year));
+                    // Adding a new movie
+                    movieProvider.addMovie(new Movie(title, genre, year), new MovieProvider.OnMovieAddListener() {
+                        @Override
+                        public void onMovieAddError(String errorMessage) {
+                            showErrorDialog(errorMessage);
+                        }
+
+                        @Override
+                        public void onMovieAddedSuccessfully() {
+                            dialog.dismiss();
+                        }
+                    });
                 }
-                dialog.dismiss();
             });
         });
+
         return dialog;
     }
 
