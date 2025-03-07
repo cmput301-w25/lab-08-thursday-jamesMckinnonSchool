@@ -17,6 +17,10 @@ public class MovieProvider {
         movieCollection = firestore.collection("movies");
     }
 
+    public static void setInstanceForTesting(FirebaseFirestore firestore) {
+        movieProvider = new MovieProvider(firestore);
+    }
+
     public interface DataStatus {
         void onDataUpdated();
         void onError(String error);
@@ -48,26 +52,38 @@ public class MovieProvider {
         return movies;
     }
 
-    public void updateMovie(Movie movie, String title, String genre, int year) {
-        movie.setTitle(title);
-        movie.setGenre(genre);
-        movie.setYear(year);
-        DocumentReference docRef = movieCollection.document(movie.getId());
-        if (validMovie(movie, docRef)) {
-            docRef.set(movie);
-        } else {
-            throw new IllegalArgumentException("Invalid Movie!");
-        }
+    public void addMovie(Movie movie) {
+        isMovieTitleExists(movie.getTitle(), exists -> {
+            if (exists) {
+                throw new IllegalArgumentException("A movie with this title already exists!");
+            } else {
+                DocumentReference docRef = movieCollection.document();
+                movie.setId(docRef.getId());
+                if (validMovie(movie, docRef)) {
+                    docRef.set(movie);
+                } else {
+                    throw new IllegalArgumentException("Invalid Movie!");
+                }
+            }
+        });
     }
 
-    public void addMovie(Movie movie) {
-        DocumentReference docRef = movieCollection.document();
-        movie.setId(docRef.getId());
-        if (validMovie(movie, docRef)) {
-            docRef.set(movie);
-        } else {
-            throw new IllegalArgumentException("Invalid Movie!");
-        }
+    public void updateMovie(Movie movie, String title, String genre, int year) {
+        isMovieTitleExists(title, exists -> {
+            if (exists && !movie.getTitle().equals(title)) {
+                throw new IllegalArgumentException("A movie with this title already exists!");
+            } else {
+                movie.setTitle(title);
+                movie.setGenre(genre);
+                movie.setYear(year);
+                DocumentReference docRef = movieCollection.document(movie.getId());
+                if (validMovie(movie, docRef)) {
+                    docRef.set(movie);
+                } else {
+                    throw new IllegalArgumentException("Invalid Movie!");
+                }
+            }
+        });
     }
 
     public void deleteMovie(Movie movie) {
@@ -75,7 +91,21 @@ public class MovieProvider {
         docRef.delete();
     }
 
+    private void isMovieTitleExists(String title, OnTitleCheckListener listener) {
+        movieCollection.whereEqualTo("title", title).get().addOnCompleteListener(task -> {
+            if (task.isSuccessful() && task.getResult() != null && !task.getResult().isEmpty()) {
+                listener.onCheck(true);
+            } else {
+                listener.onCheck(false);
+            }
+        });
+    }
+
     public boolean validMovie(Movie movie, DocumentReference docRef) {
         return movie.getId().equals(docRef.getId()) && !movie.getTitle().isEmpty() && !movie.getGenre().isEmpty() && movie.getYear() > 0;
+    }
+
+    private interface OnTitleCheckListener {
+        void onCheck(boolean exists);
     }
 }
